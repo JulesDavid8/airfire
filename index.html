@@ -3,30 +3,325 @@
 <head>
   <meta charset="utf-8">
   <title>AirFire • Private Dogfight</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
     
-    :root { --vh: 100vh; }
-    
-    html, body { 
-      margin:0; 
-      padding:0; 
-      background:#0a0a0a; 
-      overflow:hidden; 
-      height: 100dvh; 
-      width: 100%; 
-      font-family: system-ui, -apple-system, sans-serif; 
+    :root {
+      --bg-0: #070b14;
+      --bg-1: #101a30;
+      --bg-2: #152640;
+      --panel: rgba(12, 18, 33, 0.9);
+      --panel-soft: rgba(15, 24, 43, 0.84);
+      --panel-border: #2a3a57;
+      --text: #ebf2ff;
+      --muted: #8ca3c4;
+      --accent: #facc15;
+      --accent-2: #22d3ee;
+      --radius-lg: 18px;
+      --radius-sm: 12px;
     }
 
-    canvas { 
-      image-rendering: pixelated; 
-      border: 4px solid #111827; 
-      box-shadow: 0 0 30px rgba(250, 204, 21, 0.3); 
+    * {
+      box-sizing: border-box;
     }
 
-    .lobby-header { font-family: 'Press Start 2P', system-ui; letter-spacing: 2px; }
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      width: 100%;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 16% 14%, rgba(34, 211, 238, 0.07), transparent 42%),
+        radial-gradient(circle at 82% 18%, rgba(250, 204, 21, 0.08), transparent 45%),
+        linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 100%);
+    }
+
+    body {
+      min-height: 100dvh;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(58, 76, 108, 0.32) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(58, 76, 108, 0.32) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: radial-gradient(circle at center, black 26%, transparent 100%);
+      opacity: 0.22;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      border: 3px solid #1e2c44;
+      background: #0f172a;
+      box-shadow: 0 16px 40px rgba(3, 7, 18, 0.55);
+    }
+
+    .lobby-shell {
+      max-width: 1200px;
+      margin: 0 auto;
+      min-height: 100dvh;
+      width: 100%;
+      padding: clamp(16px, 2.4vw, 34px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(18px, 2vw, 28px);
+    }
+
+    .lobby-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .lobby-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-badge {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      background: linear-gradient(135deg, #facc15, #22d3ee);
+      box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.35);
+    }
+
+    .lobby-header {
+      font-family: 'Press Start 2P', system-ui;
+      letter-spacing: 1.5px;
+      line-height: 1.08;
+      font-size: clamp(1.55rem, 4.5vw, 2.9rem);
+      color: var(--accent);
+      margin: 0;
+      text-shadow: 0 0 16px rgba(250, 204, 21, 0.24);
+      white-space: nowrap;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .how-button {
+      border: 1px solid var(--panel-border);
+      background: rgba(34, 211, 238, 0.08);
+      color: #8cf7ff;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: background 140ms ease, transform 140ms ease;
+    }
+
+    .how-button:hover {
+      background: rgba(34, 211, 238, 0.18);
+      transform: translateY(-1px);
+    }
+
+    .status-pill {
+      border: 1px solid var(--panel-border);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      background: rgba(16, 26, 48, 0.8);
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.86fr);
+      gap: clamp(14px, 1.8vw, 22px);
+      align-items: stretch;
+    }
+
+    .retro-panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius-lg);
+      padding: clamp(16px, 2vw, 24px);
+      backdrop-filter: blur(6px);
+    }
+
+    .join-panel {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(12px, 1.8vw, 20px);
+      min-height: 0;
+    }
+
+    .join-title {
+      margin: 0;
+      font-size: clamp(1.42rem, 3.2vw, 2.1rem);
+      line-height: 1.2;
+      letter-spacing: 0.01em;
+      font-weight: 750;
+    }
+
+    .join-label {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    .join-row {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+      width: 100%;
+    }
+
+    .join-input {
+      flex: 1;
+      min-width: 0;
+      border-radius: 14px;
+      border: 1px solid #3b4a63;
+      background: #182238;
+      color: var(--text);
+      font-size: clamp(0.95rem, 2.4vw, 1.06rem);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      padding: 14px 16px;
+      outline: none;
+      transition: border-color 140ms ease, box-shadow 140ms ease;
+    }
+
+    .join-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.2);
+    }
+
+    .join-button {
+      border: none;
+      border-radius: 14px;
+      background: var(--accent);
+      color: #111827;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      min-width: 116px;
+      padding: 0 18px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease;
+    }
+
+    .join-button:hover {
+      filter: brightness(1.03);
+      transform: translateY(-1px);
+    }
+
+    .join-button:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    .host-button {
+      border: 1px solid #756100;
+      background: linear-gradient(180deg, #facc15 0%, #f0b90d 100%);
+      color: #111827;
+      font-weight: 850;
+      width: 100%;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: clamp(1rem, 2.4vw, 1.22rem);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease;
+    }
+
+    .host-button:hover {
+      filter: brightness(1.02);
+      transform: translateY(-1px);
+    }
+
+    .host-button:active {
+      transform: scale(0.985);
+    }
+
+    .join-meta {
+      margin-top: auto;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: #6f88a8;
+      font-size: 0.75rem;
+      padding-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .preview-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 100%;
+    }
+
+    .preview-tag {
+      color: #85eff6;
+      font-size: 0.75rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .preview-screen {
+      width: min(100%, 440px);
+      aspect-ratio: 16 / 9;
+      border-radius: var(--radius-sm);
+      background: #0b1427;
+      border: 1px solid #2d3f5f;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      padding: 12px;
+    }
+
+    .preview-screen canvas {
+      width: 100%;
+      height: 100%;
+      max-width: 360px;
+      max-height: 220px;
+    }
+
+    .mobile-note {
+      display: none;
+      text-align: center;
+      color: #7be6f0;
+      font-size: 0.84rem;
+      margin-top: 4px;
+    }
 
     #gameContainer {
       position: fixed;
@@ -34,20 +329,197 @@
       width: 100%; height: 100dvh;
       display: none;
       flex-direction: column;
-      background: #0a0a0a;
+      background: linear-gradient(180deg, #0d1628, #060b14);
       z-index: 50;
+      overflow: hidden;
     }
 
-    /* Much cleaner and more robust canvas scaling */
-    #netplayCanvas {
-      display: block;
+    .game-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 14px;
+      background: rgba(11, 19, 35, 0.9);
+      border-bottom: 1px solid #25344e;
+      font-size: 0.82rem;
+      flex-wrap: wrap;
+    }
+
+    .game-top-left,
+    .game-top-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
+    .hud-pill {
+      border: 1px solid #2d3d5a;
+      background: #131f34;
+      color: #cfdeef;
+      border-radius: 999px;
+      padding: 6px 11px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      font-weight: 650;
+    }
+
+    .hud-pill:hover {
+      background: #192943;
+    }
+
+    .game-canvas-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      min-height: 0;
+    }
+
+    #netplayMount {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+
+    #mobileControls {
+      padding: 10px 12px max(14px, env(safe-area-inset-bottom));
+      background: linear-gradient(180deg, rgba(5, 10, 19, 0), rgba(5, 10, 19, 0.9));
+      z-index: 9999;
+    }
+
+    .mobile-controls-help {
+      text-align: center;
+      font-size: 0.66rem;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: #afc0d6;
+      margin-bottom: 8px;
+    }
+
+    .mobile-controls-row {
+      max-width: 680px;
       margin: 0 auto;
-      max-width: 100%;
-      max-height: calc(100dvh - 60px);
-      object-fit: contain;
-      image-rendering: pixelated;
-      border: 4px solid #111827;
-      box-shadow: 0 0 30px rgba(250, 204, 21, 0.25);
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .fire-btn {
+      border: 0;
+      border-radius: 13px;
+      color: #111827;
+      font-weight: 800;
+      font-size: 0.85rem;
+      padding: 12px 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      letter-spacing: 0.02em;
+      box-shadow: 0 10px 22px rgba(5, 10, 19, 0.4);
+      transition: transform 120ms ease, filter 120ms ease;
+      touch-action: manipulation;
+    }
+
+    .fire-btn:active {
+      transform: scale(0.96);
+    }
+
+    .fire-btn-gun {
+      background: #facc15;
+    }
+
+    .fire-btn-bomb {
+      background: #fb923c;
+      color: white;
+    }
+
+    .fire-btn-rocket {
+      background: #c084fc;
+      color: white;
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .preview-screen {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .lobby-shell {
+        min-height: auto;
+      }
+
+      .top-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .status-pill {
+        flex: 1;
+        text-align: center;
+        min-width: 210px;
+      }
+
+      .join-row {
+        flex-direction: column;
+      }
+
+      .join-button {
+        min-width: 0;
+        width: 100%;
+        min-height: 48px;
+      }
+
+      .join-meta {
+        font-size: 0.72rem;
+      }
+
+      .mobile-note {
+        display: block;
+      }
+
+      .preview-tag {
+        font-size: 0.7rem;
+        letter-spacing: 0.14em;
+      }
+
+      .preview-panel {
+        display: none;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .brand-badge {
+        width: 34px;
+        height: 34px;
+        font-size: 20px;
+      }
+
+      .lobby-header {
+        font-size: clamp(1.2rem, 10vw, 2rem);
+        letter-spacing: 1px;
+      }
+
+      .how-button,
+      .status-pill {
+        font-size: 0.72rem;
+      }
+
+      .game-topbar {
+        padding: 8px 10px;
+      }
     }
   </style>
   <script src="https://unpkg.com/netplayjs@0.4.1/dist/netplay.js"></script>
@@ -55,430 +527,863 @@
 <body>
 
   <!-- LOBBY -->
-  <div id="lobby" class="flex flex-col min-h-[100dvh] max-w-7xl mx-auto w-full p-4 md:p-8">
-    <div class="flex items-center justify-between mb-8">
-      <div class="flex items-center gap-x-3">
-        <div class="w-9 h-9 bg-gradient-to-br from-yellow-400 to-teal-400 rounded-xl flex items-center justify-center text-2xl shadow-inner">✈️</div>
-        <h1 class="lobby-header text-4xl md:text-5xl font-bold tracking-widest text-yellow-300">AIRFIRE</h1>
+  <div id="lobby" class="lobby-shell">
+    <div class="lobby-top">
+      <div class="lobby-brand">
+        <div class="brand-badge">✈️</div>
+        <h1 class="lobby-header">AIRFIRE</h1>
       </div>
-      <div class="flex items-center gap-x-4 text-sm text-teal-400">
-        <div onclick="toggleHowTo()" class="cursor-pointer px-6 py-2 rounded-3xl hover:bg-slate-800">How it works</div>
-        <div>Private • P2P • No server</div>
+      <div class="top-actions">
+        <button type="button" onclick="toggleHowTo()" class="how-button">How it works</button>
+        <div class="status-pill">Private • P2P • No server</div>
       </div>
     </div>
 
-    <div class="flex-1 grid md:grid-cols-2 gap-8 items-center">
+    <div class="hero-grid">
       <!-- Join panel -->
-      <div class="bg-[#111827] rounded-3xl p-8 shadow-2xl flex flex-col">
-        <h2 class="text-3xl font-semibold mb-8 text-white">JOIN THE DOGFIGHT</h2>
+      <div class="retro-panel join-panel">
+        <h2 class="join-title">Join The Dogfight</h2>
         
-        <div class="mb-8">
-          <label class="block text-xs tracking-widest mb-3 text-slate-400">JOIN WITH CODE</label>
-          <div class="flex gap-3">
-            <input id="joinCode" type="text" maxlength="8" placeholder="K7P9" 
-                   class="flex-1 bg-[#1e2937] border border-slate-600 focus:border-yellow-400 rounded-3xl px-7 py-5 text-xl font-mono text-center outline-none">
+        <div>
+          <label class="join-label">Join with code or invite link</label>
+          <div class="join-row">
+            <input id="joinCode" type="text" maxlength="200" placeholder="Paste room code or full invite link" 
+                   class="join-input" autocomplete="off" spellcheck="false">
             <button onclick="joinGame()" 
-                    class="bg-yellow-400 hover:bg-yellow-300 text-[#111827] font-bold px-10 rounded-3xl text-xl">JOIN</button>
+                    class="join-button">JOIN</button>
           </div>
         </div>
 
         <button onclick="hostGame()" 
-                class="bg-gradient-to-r from-yellow-400 to-amber-400 text-[#111827] font-bold text-2xl py-7 rounded-3xl flex items-center justify-center gap-4 shadow-inner hover:scale-[1.02] active:scale-95 transition-all">
+                class="host-button">
           HOST PRIVATE GAME
-          <span class="text-3xl">✈️</span>
+          <span>✈️</span>
         </button>
 
-        <p id="shareLinkContainer" class="hidden mt-8 text-center text-sm text-slate-400">
-          Share this link with friends:<br>
-          <span id="shareLink" onclick="copyLink()" class="font-mono bg-slate-800 px-5 py-3 rounded-3xl cursor-pointer inline-block mt-3 break-all"></span>
-        </p>
-
-        <div class="mt-auto pt-8 text-xs text-slate-500 flex justify-between">
-          <div>Up to 4 players • Any device</div>
-          <div>Rollback netcode • Zero lag</div>
+        <div class="join-meta">
+          <div>2 players • Any device</div>
+          <div>Rollback netcode • sub-100ms sync</div>
         </div>
       </div>
 
       <!-- Preview -->
-      <div class="hidden md:flex flex-col justify-center items-center bg-[#111827] rounded-3xl p-8">
-        <div class="text-teal-300 text-sm font-medium mb-4 tracking-widest">RETRO 80s + MODERN PHYSICS</div>
-        <div class="w-full max-w-xs aspect-video bg-[#0f172a] rounded-2xl flex items-center justify-center border border-slate-700 overflow-hidden">
-          <canvas id="previewCanvas" width="320" height="180" class="image-rendering-pixelated"></canvas>
+      <div class="retro-panel preview-panel">
+        <div class="preview-tag">Fast dogfights • clean controls • crisp pixels</div>
+        <div class="preview-screen">
+          <canvas id="previewCanvas" width="320" height="180"></canvas>
         </div>
       </div>
     </div>
 
-    <div class="md:hidden mt-auto text-center text-teal-400 text-sm pt-8">Works perfectly on phones &amp; desktops</div>
+    <div class="mobile-note">Optimized for phones, tablets, and desktop browsers</div>
   </div>
 
   <!-- GAME SCREEN -->
   <div id="gameContainer">
-    <div class="flex justify-between items-center px-4 py-3 bg-[#111827] border-b border-slate-700 text-sm z-50">
-      <div class="flex items-center gap-x-2">
+    <div class="game-topbar">
+      <div class="game-top-left">
         <span class="text-yellow-300 font-bold">AIRFIRE</span>
         <span id="roomInfo" class="font-mono text-teal-400 text-xs"></span>
       </div>
-      <button onclick="exitToLobby()" class="px-6 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-3xl">← LOBBY</button>
+      <div class="game-top-right">
+        <span id="networkStatus" class="text-[11px] uppercase tracking-[0.14em] text-slate-400">CONNECTING</span>
+        <button id="copyInviteBtn" onclick="copyInviteLink()" class="hidden hud-pill">COPY INVITE</button>
+        <button onclick="exitToLobby()" class="hud-pill">← LOBBY</button>
+      </div>
     </div>
 
-    <canvas id="netplayCanvas"></canvas>
+    <div class="game-canvas-wrapper">
+      <div id="netplayMount" class="w-full h-full flex items-center justify-center"></div>
+    </div>
 
-    <!-- Mobile Controls -->
-    <div id="mobileControls" class="hidden fixed bottom-6 left-4 right-4 flex justify-between gap-3 z-[9999]">
-      <button onclick="fireGun()" 
-              class="flex-1 bg-yellow-400 hover:bg-yellow-300 text-[#111827] font-bold py-6 rounded-3xl text-lg flex items-center justify-center gap-2 shadow-2xl">🔫 GUN</button>
-      <button onclick="dropBomb()" 
-              class="flex-1 bg-orange-500 hover:bg-orange-400 text-white font-bold py-6 rounded-3xl text-lg flex items-center justify-center gap-2 shadow-2xl">💣 BOMB</button>
-      <button onclick="fireRocket()" 
-              class="flex-1 bg-purple-500 hover:bg-purple-400 text-white font-bold py-6 rounded-3xl text-lg flex items-center justify-center gap-2 shadow-2xl">🚀 ROCKET</button>
+    <div id="mobileControls" class="hidden">
+      <div class="mobile-controls-help">
+        Joystick moves plane • Buttons fire weapons
+      </div>
+      <div class="mobile-controls-row">
+        <button data-fire-key="j" onclick="fireGun()" 
+                class="fire-btn fire-btn-gun">🔫 GUN</button>
+        <button data-fire-key="k" onclick="dropBomb()" 
+                class="fire-btn fire-btn-bomb">💣 BOMB</button>
+        <button data-fire-key="l" onclick="fireRocket()" 
+                class="fire-btn fire-btn-rocket">🚀 ROCKET</button>
+      </div>
     </div>
   </div>
 
 <script>
-// Tailwind
 tailwind.config = { content: [] };
 
-// Core Game Class (placeholder for now)
+const AIRFIRE_COLORS = ['#facc15', '#22d3ee'];
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const wrap = (value, max) => {
+  if (value < 0) return value + max;
+  if (value > max) return value - max;
+  return value;
+};
+const formatScoreboard = (scores, players) =>
+  players
+    .map((player, index) => `P${index + 1}: ${scores[String(player.getID())] ?? 0}`)
+    .join(' • ');
+
 class AirFire extends netplayjs.Game {
-  constructor() {
+  static timestep = 1000 / 60;
+  static canvasSize = { width: 960, height: 540 };
+  static touchControls = { move: new netplayjs.VirtualJoystick() };
+
+  constructor(canvas, players) {
     super();
-    this.players = new Map();
+    this.players = players;
+    this.playerState = {};
     this.bullets = [];
     this.bombs = [];
     this.rockets = [];
-    this.gameStarted = false;
+    this.explosions = [];
+    this.scores = {};
+    this.tickCount = 0;
 
-    // For local testing / single player mode
-    this.localPlayerId = 'local';
-    this.players.set(this.localPlayerId, {
-      x: 200,
-      y: 250,
-      vx: 0,
-      vy: 0,
-      angle: 0,
-      color: '#facc15',
-      lastShot: 0
+    players.forEach((player, index) => {
+      const pid = String(player.getID());
+      this.playerState[pid] = this.createSpawnState(index);
+      this.scores[pid] = 0;
     });
   }
 
-  // Main game loop - must be deterministic for rollback netcode
-  tick(inputs) {
-    if (!this.gameStarted) return;
+  createSpawnState(index) {
+    const spawnPoints = [
+      { x: 220, y: 180, angle: 0 },
+      { x: 740, y: 360, angle: Math.PI },
+      { x: 220, y: 360, angle: 0 },
+      { x: 740, y: 180, angle: Math.PI },
+    ];
+    const base = spawnPoints[index % spawnPoints.length];
+    return {
+      x: base.x,
+      y: base.y,
+      vx: 0,
+      vy: 0,
+      angle: base.angle,
+      hp: 100,
+      alive: true,
+      respawnTicks: 0,
+      invulnTicks: 45,
+      gunCooldown: 0,
+      bombCooldown: 0,
+      rocketCooldown: 0,
+      thruster: 0,
+      color: AIRFIRE_COLORS[index % AIRFIRE_COLORS.length],
+    };
+  }
 
-    const PLAYER_SPEED = 3.2;
-    const TURN_SPEED = 0.08;
-    const BULLET_SPEED = 7;
+  keyHeld(input, key) {
+    return Boolean((input?.keysHeld && input.keysHeld[key]) || (input?.pressed && input.pressed[key]));
+  }
 
-    // Update players
-    for (const [playerId, player] of this.players) {
-      const input = inputs.get(playerId) || {};
+  keyPressed(input, key) {
+    return Boolean(
+      (input?.keysPressed && input.keysPressed[key]) ||
+      (input?.pressed && input.pressed[key])
+    );
+  }
 
-      // Rotation
-      if (input.left)  player.angle -= TURN_SPEED;
-      if (input.right) player.angle += TURN_SPEED;
+  spawnBullet(pid, p) {
+    const muzzle = 22;
+    const speed = 8.5;
+    this.bullets.push({
+      x: p.x + Math.cos(p.angle) * muzzle,
+      y: p.y + Math.sin(p.angle) * muzzle,
+      vx: Math.cos(p.angle) * speed + p.vx * 0.35,
+      vy: Math.sin(p.angle) * speed + p.vy * 0.35,
+      owner: pid,
+      life: 58,
+      damage: 24,
+    });
+  }
 
-      // Thrust
-      if (input.up) {
-        player.vx += Math.cos(player.angle) * 0.25;
-        player.vy += Math.sin(player.angle) * 0.25;
-      }
+  spawnBomb(pid, p) {
+    const dropDistance = 10;
+    this.bombs.push({
+      x: p.x - Math.cos(p.angle) * dropDistance,
+      y: p.y - Math.sin(p.angle) * dropDistance,
+      vx: p.vx * 0.75,
+      vy: p.vy * 0.75 + 0.3,
+      owner: pid,
+      life: 85,
+      radius: 42,
+      damage: 70,
+    });
+  }
 
-      // Apply velocity
-      player.x += player.vx;
-      player.y += player.vy;
+  spawnRocket(pid, p) {
+    const speed = 4.2;
+    this.rockets.push({
+      x: p.x + Math.cos(p.angle) * 18,
+      y: p.y + Math.sin(p.angle) * 18,
+      vx: Math.cos(p.angle) * speed + p.vx * 0.15,
+      vy: Math.sin(p.angle) * speed + p.vy * 0.15,
+      owner: pid,
+      life: 120,
+      damage: 55,
+      turnRate: 0.09,
+      speed: 4.8,
+    });
+  }
 
-      // Friction
-      player.vx *= 0.985;
-      player.vy *= 0.985;
+  addExplosion(x, y, ttl, size, color) {
+    this.explosions.push({ x, y, ttl, maxTtl: ttl, size, color });
+  }
 
-      // Screen wrapping (simple for now)
-      const W = AirFire.canvasSize.width;
-      const H = AirFire.canvasSize.height;
-      if (player.x < 0) player.x = W;
-      if (player.x > W) player.x = 0;
-      if (player.y < 0) player.y = H;
-      if (player.y > H) player.y = 0;
-
-      // Shooting
-      if (input.shoot && (player.lastShot || 0) <= 0) {
-        this.bullets.push({
-          x: player.x + Math.cos(player.angle) * 18,
-          y: player.y + Math.sin(player.angle) * 18,
-          vx: Math.cos(player.angle) * BULLET_SPEED + player.vx * 0.3,
-          vy: Math.sin(player.angle) * BULLET_SPEED + player.vy * 0.3,
-          life: 45,
-          owner: playerId
-        });
-        player.lastShot = 8; // fire rate
-      }
-      if (player.lastShot > 0) player.lastShot--;
+  damagePlayer(targetId, ownerId, damage) {
+    const target = this.playerState[targetId];
+    if (!target || !target.alive || target.respawnTicks > 0 || target.invulnTicks > 0) {
+      return false;
     }
 
-    // Update bullets
-    for (let i = this.bullets.length - 1; i >= 0; i--) {
+    target.hp -= damage;
+    this.addExplosion(target.x, target.y, 12, 16, '#f97316');
+    if (target.hp > 0) {
+      return true;
+    }
+
+    target.alive = false;
+    target.respawnTicks = 130;
+    target.invulnTicks = 0;
+    target.vx = 0;
+    target.vy = 0;
+    this.scores[ownerId] = (this.scores[ownerId] ?? 0) + 1;
+    this.addExplosion(target.x, target.y, 24, 40, '#facc15');
+    return true;
+  }
+
+  findClosestEnemy(ownerId, x, y) {
+    let closest = null;
+    let closestDistSq = Number.POSITIVE_INFINITY;
+    for (const player of this.players) {
+      const pid = String(player.getID());
+      if (pid === ownerId) continue;
+      const state = this.playerState[pid];
+      if (!state || !state.alive || state.respawnTicks > 0) continue;
+      const dx = state.x - x;
+      const dy = state.y - y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < closestDistSq) {
+        closestDistSq = distSq;
+        closest = state;
+      }
+    }
+    return closest;
+  }
+
+  updatePlayers(inputs) {
+    const turnSpeed = 0.072;
+    const thrustPower = 0.29;
+    const brakeFactor = 0.95;
+    const maxSpeed = 6.2;
+
+    for (let index = 0; index < this.players.length; index += 1) {
+      const player = this.players[index];
+      const pid = String(player.getID());
+      const p = this.playerState[pid];
+      if (!p) continue;
+
+      if (p.respawnTicks > 0) {
+        p.respawnTicks -= 1;
+        if (p.respawnTicks === 0) {
+          const fresh = this.createSpawnState(index);
+          Object.assign(p, fresh);
+        }
+        continue;
+      }
+
+      if (p.invulnTicks > 0) p.invulnTicks -= 1;
+      if (p.gunCooldown > 0) p.gunCooldown -= 1;
+      if (p.bombCooldown > 0) p.bombCooldown -= 1;
+      if (p.rocketCooldown > 0) p.rocketCooldown -= 1;
+
+      const input = inputs.get(player) || {};
+      const joystick = input?.touchControls?.move || { x: 0, y: 0 };
+
+      const left = this.keyHeld(input, 'ArrowLeft') || this.keyHeld(input, 'a') || joystick.x < -0.18;
+      const right = this.keyHeld(input, 'ArrowRight') || this.keyHeld(input, 'd') || joystick.x > 0.18;
+      const thrust = this.keyHeld(input, 'ArrowUp') || this.keyHeld(input, 'w') || joystick.y > 0.18;
+      const brake = this.keyHeld(input, 'ArrowDown') || this.keyHeld(input, 's');
+
+      let steer = 0;
+      if (left) steer -= 1;
+      if (right) steer += 1;
+      if (Math.abs(joystick.x) > 0.18) {
+        steer += joystick.x * 0.8;
+      }
+
+      p.angle += steer * turnSpeed;
+
+      if (thrust) {
+        const joyBoost = joystick.y > 0.18 ? joystick.y * 0.35 : 0;
+        const accel = thrustPower + joyBoost;
+        p.vx += Math.cos(p.angle) * accel;
+        p.vy += Math.sin(p.angle) * accel;
+        p.thruster = 1;
+      } else {
+        p.thruster = 0;
+      }
+
+      if (brake) {
+        p.vx *= brakeFactor;
+        p.vy *= brakeFactor;
+      }
+
+      const speed = Math.hypot(p.vx, p.vy);
+      if (speed > maxSpeed) {
+        const scale = maxSpeed / speed;
+        p.vx *= scale;
+        p.vy *= scale;
+      }
+
+      p.vx *= 0.988;
+      p.vy *= 0.988;
+      p.x = wrap(p.x + p.vx, AirFire.canvasSize.width);
+      p.y = wrap(p.y + p.vy, AirFire.canvasSize.height);
+
+      const shoot = this.keyHeld(input, ' ') || this.keyHeld(input, 'j');
+      const bomb = this.keyPressed(input, 'k');
+      const rocket = this.keyPressed(input, 'l');
+
+      if (shoot && p.gunCooldown <= 0) {
+        this.spawnBullet(pid, p);
+        p.gunCooldown = 7;
+      }
+      if (bomb && p.bombCooldown <= 0) {
+        this.spawnBomb(pid, p);
+        p.bombCooldown = 65;
+      }
+      if (rocket && p.rocketCooldown <= 0) {
+        this.spawnRocket(pid, p);
+        p.rocketCooldown = 85;
+      }
+    }
+  }
+
+  updateBullets() {
+    for (let i = this.bullets.length - 1; i >= 0; i -= 1) {
       const b = this.bullets[i];
       b.x += b.vx;
       b.y += b.vy;
-      b.life--;
+      b.life -= 1;
 
-      if (b.life <= 0) {
+      if (
+        b.life <= 0 ||
+        b.x < -20 || b.y < -20 ||
+        b.x > AirFire.canvasSize.width + 20 ||
+        b.y > AirFire.canvasSize.height + 20
+      ) {
         this.bullets.splice(i, 1);
+        continue;
       }
-    }
 
-    // Simple collision (bullet vs player)
-    for (let i = this.bullets.length - 1; i >= 0; i--) {
-      const b = this.bullets[i];
-      for (const [pid, p] of this.players) {
+      for (const player of this.players) {
+        const pid = String(player.getID());
         if (pid === b.owner) continue;
+        const p = this.playerState[pid];
+        if (!p || !p.alive || p.respawnTicks > 0) continue;
 
         const dx = b.x - p.x;
         const dy = b.y - p.y;
-        if (dx * dx + dy * dy < 18 * 18) {
-          // Hit!
+        if (dx * dx + dy * dy <= 16 * 16) {
+          this.damagePlayer(pid, b.owner, b.damage);
           this.bullets.splice(i, 1);
-          // For now just log - we'll add proper death later
-          console.log(`Player ${b.owner} hit ${pid}`);
           break;
         }
       }
     }
   }
 
-  draw(canvas) {
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  updateBombs() {
+    for (let i = this.bombs.length - 1; i >= 0; i -= 1) {
+      const bomb = this.bombs[i];
+      bomb.vy += 0.08;
+      bomb.x += bomb.vx;
+      bomb.y += bomb.vy;
+      bomb.life -= 1;
 
-    // Simple grid background
-    ctx.strokeStyle = '#1e2937';
+      if (
+        bomb.life <= 0 ||
+        bomb.y > AirFire.canvasSize.height + 40 ||
+        bomb.x < -40 ||
+        bomb.x > AirFire.canvasSize.width + 40
+      ) {
+        for (const player of this.players) {
+          const pid = String(player.getID());
+          if (pid === bomb.owner) continue;
+          const p = this.playerState[pid];
+          if (!p || !p.alive || p.respawnTicks > 0) continue;
+          const dx = bomb.x - p.x;
+          const dy = bomb.y - p.y;
+          if (dx * dx + dy * dy <= bomb.radius * bomb.radius) {
+            this.damagePlayer(pid, bomb.owner, bomb.damage);
+          }
+        }
+        this.addExplosion(bomb.x, bomb.y, 18, bomb.radius, '#fb923c');
+        this.bombs.splice(i, 1);
+      }
+    }
+  }
+
+  updateRockets() {
+    for (let i = this.rockets.length - 1; i >= 0; i -= 1) {
+      const rocket = this.rockets[i];
+      rocket.life -= 1;
+
+      const target = this.findClosestEnemy(rocket.owner, rocket.x, rocket.y);
+      if (target) {
+        const toTargetX = target.x - rocket.x;
+        const toTargetY = target.y - rocket.y;
+        const distance = Math.hypot(toTargetX, toTargetY) || 1;
+        const desiredVx = (toTargetX / distance) * rocket.speed;
+        const desiredVy = (toTargetY / distance) * rocket.speed;
+        rocket.vx += (desiredVx - rocket.vx) * rocket.turnRate;
+        rocket.vy += (desiredVy - rocket.vy) * rocket.turnRate;
+      }
+
+      rocket.x += rocket.vx;
+      rocket.y += rocket.vy;
+
+      let removed = false;
+      for (const player of this.players) {
+        const pid = String(player.getID());
+        if (pid === rocket.owner) continue;
+        const p = this.playerState[pid];
+        if (!p || !p.alive || p.respawnTicks > 0) continue;
+        const dx = rocket.x - p.x;
+        const dy = rocket.y - p.y;
+        if (dx * dx + dy * dy <= 20 * 20) {
+          this.damagePlayer(pid, rocket.owner, rocket.damage);
+          this.addExplosion(rocket.x, rocket.y, 20, 34, '#a855f7');
+          this.rockets.splice(i, 1);
+          removed = true;
+          break;
+        }
+      }
+      if (removed) continue;
+
+      if (
+        rocket.life <= 0 ||
+        rocket.x < -30 || rocket.y < -30 ||
+        rocket.x > AirFire.canvasSize.width + 30 ||
+        rocket.y > AirFire.canvasSize.height + 30
+      ) {
+        this.addExplosion(rocket.x, rocket.y, 12, 18, '#a855f7');
+        this.rockets.splice(i, 1);
+      }
+    }
+  }
+
+  updateExplosions() {
+    for (let i = this.explosions.length - 1; i >= 0; i -= 1) {
+      this.explosions[i].ttl -= 1;
+      if (this.explosions[i].ttl <= 0) {
+        this.explosions.splice(i, 1);
+      }
+    }
+  }
+
+  tick(inputs) {
+    this.tickCount += 1;
+    this.updatePlayers(inputs);
+    this.updateBullets();
+    this.updateBombs();
+    this.updateRockets();
+    this.updateExplosions();
+  }
+
+  drawGrid(ctx, width, height) {
+    ctx.strokeStyle = '#1f2937';
     ctx.lineWidth = 1;
-    for (let x = 0; x < canvas.width; x += 40) {
+    for (let x = 0; x <= width; x += 48) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
+      ctx.lineTo(x, height);
       ctx.stroke();
     }
-    for (let y = 0; y < canvas.height; y += 40) {
+    for (let y = 0; y <= height; y += 48) {
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
+      ctx.lineTo(width, y);
       ctx.stroke();
     }
+  }
 
-    // Draw players
-    for (const [id, p] of this.players) {
+  drawPlayers(ctx) {
+    for (const player of this.players) {
+      const pid = String(player.getID());
+      const p = this.playerState[pid];
+      if (!p || p.respawnTicks > 0) continue;
+
+      if (p.invulnTicks > 0 && (p.invulnTicks % 8 < 4)) {
+        continue;
+      }
+
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.angle);
-
-      // Simple plane shape
-      ctx.fillStyle = p.color || '#facc15';
+      ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.moveTo(18, 0);
-      ctx.lineTo(-10, -8);
+      ctx.moveTo(20, 0);
+      ctx.lineTo(-12, -9);
       ctx.lineTo(-4, 0);
-      ctx.lineTo(-10, 8);
+      ctx.lineTo(-12, 9);
       ctx.closePath();
       ctx.fill();
 
-      // Cockpit
-      ctx.fillStyle = '#111827';
-      ctx.fillRect(-2, -3, 6, 6);
+      if (p.thruster > 0) {
+        ctx.fillStyle = '#fb7185';
+        ctx.beginPath();
+        ctx.moveTo(-11, 0);
+        ctx.lineTo(-20, -4);
+        ctx.lineTo(-20, 4);
+        ctx.closePath();
+        ctx.fill();
+      }
 
+      ctx.fillStyle = '#0b1220';
+      ctx.fillRect(-1, -3, 7, 6);
       ctx.restore();
     }
+  }
 
-    // Draw bullets
-    ctx.fillStyle = '#facc15';
-    for (const b of this.bullets) {
-      ctx.fillRect(b.x - 2, b.y - 1, 5, 2);
+  drawProjectiles(ctx) {
+    ctx.fillStyle = '#fde047';
+    for (const bullet of this.bullets) {
+      ctx.fillRect(bullet.x - 2, bullet.y - 1, 5, 2);
+    }
+
+    ctx.fillStyle = '#fb923c';
+    for (const bomb of this.bombs) {
+      ctx.beginPath();
+      ctx.arc(bomb.x, bomb.y, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = '#c084fc';
+    for (const rocket of this.rockets) {
+      ctx.save();
+      ctx.translate(rocket.x, rocket.y);
+      ctx.rotate(Math.atan2(rocket.vy, rocket.vx));
+      ctx.fillRect(-8, -2, 16, 4);
+      ctx.restore();
     }
   }
 
-  // This is called by NetplayJS to collect local player input each tick
-  static getInput() {
-    // In a real implementation we would know our own playerId.
-    // For now we return the global inputState (works for 1v1 testing).
-    return { ...inputState };
+  drawExplosions(ctx) {
+    for (const explosion of this.explosions) {
+      const progress = 1 - explosion.ttl / explosion.maxTtl;
+      const radius = explosion.size * (0.35 + progress * 0.85);
+      ctx.globalAlpha = clamp(1 - progress, 0, 1);
+      ctx.fillStyle = explosion.color;
+      ctx.beginPath();
+      ctx.arc(explosion.x, explosion.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
   }
 
-  static timestep = 1000 / 60;
-  static canvasSize = { width: 800, height: 500 };
+  drawHud(ctx) {
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.75)';
+    ctx.fillRect(12, 10, 300, 28);
+    ctx.fillStyle = '#e5e7eb';
+    ctx.font = '13px monospace';
+    ctx.fillText(formatScoreboard(this.scores, this.players), 20, 29);
+  }
+
+  draw(canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    this.drawGrid(ctx, canvas.width, canvas.height);
+    this.drawProjectiles(ctx);
+    this.drawPlayers(ctx);
+    this.drawExplosions(ctx);
+    this.drawHud(ctx);
+  }
 }
 
 let wrapper = null;
+let currentInviteLink = '';
+let hudTimer = null;
+let actionButtonsBound = false;
 
-// Clean and robust canvas scaling
-function resizeCanvas() {
-  const canvas = document.getElementById('netplayCanvas');
-  if (!canvas) return;
+function getRoomCodeFromValue(raw) {
+  const value = String(raw || '').trim();
+  if (!value) return null;
 
-  const container = document.getElementById('gameContainer');
-  const header = container.querySelector('div:first-child');
-  const headerHeight = header ? header.offsetHeight : 0;
-
-  const availableWidth = window.innerWidth;
-  const availableHeight = window.innerHeight - headerHeight;
-
-  const GAME_WIDTH = 800;
-  const GAME_HEIGHT = 500;
-  const aspect = GAME_WIDTH / GAME_HEIGHT;
-
-  let newWidth, newHeight;
-
-  if (availableWidth / availableHeight > aspect) {
-    newHeight = availableHeight;
-    newWidth = newHeight * aspect;
-  } else {
-    newWidth = availableWidth;
-    newHeight = newWidth / aspect;
+  try {
+    const url = new URL(value);
+    const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
+    if (hashParams.get('room')) {
+      return hashParams.get('room');
+    }
+  } catch (_error) {
+    // Not a full URL; continue parsing as text.
   }
 
-  canvas.style.width = `${Math.floor(newWidth)}px`;
-  canvas.style.height = `${Math.floor(newHeight)}px`;
-  canvas.style.position = 'absolute';
-  canvas.style.left = '50%';
-  canvas.style.top = `${headerHeight + Math.max(0, (availableHeight - newHeight) / 2)}px`;
-  canvas.style.transform = 'translateX(-50%)';
+  const roomMatch = value.match(/room=([^&#\s]+)/i);
+  if (roomMatch) {
+    return roomMatch[1];
+  }
+
+  return value.replace(/^#/, '').replace(/^room=/i, '').trim();
 }
 
-function startGame(isHost) {
+function setNetworkStatus(label, tone = 'text-slate-400') {
+  const el = document.getElementById('networkStatus');
+  if (!el) return;
+  el.className = `text-[11px] uppercase tracking-[0.14em] ${tone}`;
+  el.textContent = label;
+}
+
+function updateRoomInfo() {
+  const info = document.getElementById('roomInfo');
+  if (!info) return;
+
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const roomCode = hashParams.get('room');
+  if (roomCode) {
+    info.textContent = `ROOM • ${roomCode.slice(0, 12)}`;
+  } else {
+    info.textContent = 'ROOM • HOST';
+  }
+}
+
+function adoptWrapperCanvas() {
+  if (!wrapper || !wrapper.canvas) return;
+  const mount = document.getElementById('netplayMount');
+  if (!mount) return;
+
+  if (wrapper.canvas.parentElement !== mount) {
+    mount.innerHTML = '';
+    mount.appendChild(wrapper.canvas);
+  }
+
+  wrapper.canvas.style.position = 'relative';
+  wrapper.canvas.style.top = 'auto';
+  wrapper.canvas.style.left = 'auto';
+  wrapper.canvas.style.maxWidth = '100%';
+  wrapper.canvas.style.maxHeight = '100%';
+  wrapper.canvas.style.width = 'auto';
+  wrapper.canvas.style.height = 'auto';
+  wrapper.canvas.style.display = 'block';
+  wrapper.canvas.style.border = '4px solid #111827';
+  wrapper.canvas.style.background = '#0f172a';
+  wrapper.canvas.style.boxShadow = '0 0 30px rgba(250,204,21,0.25)';
+  if (wrapper.stats) {
+    wrapper.stats.style.display = 'none';
+  }
+}
+
+function syncInviteLinkFromNetplayMenu() {
+  const inviteAnchor = document.querySelector('a[href*="#room="]');
+  if (!inviteAnchor || !inviteAnchor.href) return;
+
+  currentInviteLink = inviteAnchor.href;
+  const btn = document.getElementById('copyInviteBtn');
+  if (btn) {
+    btn.classList.remove('hidden');
+  }
+  const code = getRoomCodeFromValue(currentInviteLink);
+  if (code) {
+    const info = document.getElementById('roomInfo');
+    if (info) {
+      info.textContent = `ROOM • ${code.slice(0, 12)}`;
+    }
+  }
+}
+
+function setVirtualKey(key, pressed) {
+  if (!wrapper || !wrapper.inputReader) return;
+  wrapper.inputReader.keysHeld[key] = pressed;
+  if (pressed) {
+    wrapper.inputReader.keysPressed[key] = true;
+  } else {
+    wrapper.inputReader.keysReleased[key] = true;
+  }
+}
+
+function bindActionButtons() {
+  if (actionButtonsBound) return;
+  actionButtonsBound = true;
+
+  const buttons = document.querySelectorAll('[data-fire-key]');
+  buttons.forEach((button) => {
+    const key = button.getAttribute('data-fire-key');
+    if (!key) return;
+
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      setVirtualKey(key, true);
+    });
+
+    button.addEventListener('pointerup', (event) => {
+      event.preventDefault();
+      setVirtualKey(key, false);
+    });
+    button.addEventListener('pointercancel', () => setVirtualKey(key, false));
+    button.addEventListener('pointerleave', () => setVirtualKey(key, false));
+  });
+}
+
+function updateMobileControlsVisibility() {
+  const controls = document.getElementById('mobileControls');
+  if (!controls) return;
+  const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+  controls.style.display = coarsePointer ? 'block' : 'none';
+}
+
+function beginHudSync() {
+  if (hudTimer) {
+    clearInterval(hudTimer);
+    hudTimer = null;
+  }
+
+  hudTimer = window.setInterval(() => {
+    adoptWrapperCanvas();
+    syncInviteLinkFromNetplayMenu();
+
+    if (wrapper?.rollbackNetcode) {
+      setNetworkStatus('LIVE', 'text-emerald-300');
+      const game = wrapper.game;
+      if (game && game.scores) {
+        const info = document.getElementById('roomInfo');
+        if (info && !info.textContent.includes('•')) {
+          updateRoomInfo();
+        }
+      }
+    }
+  }, 250);
+}
+
+function startGameSession({ joiningRoom = null }) {
   document.getElementById('lobby').style.display = 'none';
-  const gameCont = document.getElementById('gameContainer');
-  gameCont.style.display = 'flex';
+  document.getElementById('gameContainer').style.display = 'flex';
+
+  if (joiningRoom) {
+    window.location.hash = `room=${encodeURIComponent(joiningRoom)}`;
+    setNetworkStatus('JOINING', 'text-teal-300');
+  } else {
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    setNetworkStatus('HOSTING', 'text-amber-300');
+  }
+
+  updateRoomInfo();
+  updateMobileControlsVisibility();
+  bindActionButtons();
 
   wrapper = new netplayjs.RollbackWrapper(AirFire);
   wrapper.start();
-
-  setTimeout(() => {
-    const code = location.hash ? location.hash.replace('#room=', '') : 'READY';
-    document.getElementById('roomInfo').textContent = `ROOM • ${code.substring(0, 8)}`;
-
-    if (isHost) {
-      document.getElementById('shareLinkContainer').classList.remove('hidden');
-      document.getElementById('shareLink').textContent = location.href;
-    }
-
-    // Setup improved mobile controls
-    setupMobileControls();
-
-    resizeCanvas();
-  }, 600);
-
-  window.addEventListener('resize', resizeCanvas);
-  window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 400));
+  adoptWrapperCanvas();
+  beginHudSync();
 }
 
-function hostGame() { startGame(true); }
+function hostGame() {
+  startGameSession({ joiningRoom: null });
+}
 
 function joinGame() {
-  const code = document.getElementById('joinCode').value.trim();
-  if (!code) return alert("Enter a room code");
-  location.hash = `room=${code}`;
-  startGame(false);
+  const raw = document.getElementById('joinCode').value;
+  const room = getRoomCodeFromValue(raw);
+  if (!room) {
+    alert('Enter a room code or paste a full invite link.');
+    return;
+  }
+  startGameSession({ joiningRoom: room });
 }
 
-function copyLink() {
-  navigator.clipboard.writeText(location.href).then(() => {
-    const el = document.getElementById('shareLink');
-    const orig = el.textContent;
-    el.textContent = '✅ COPIED!';
-    setTimeout(() => el.textContent = orig, 1600);
+function copyInviteLink() {
+  const link = currentInviteLink || window.location.href;
+  navigator.clipboard.writeText(link).then(() => {
+    const btn = document.getElementById('copyInviteBtn');
+    if (!btn) return;
+    const original = btn.textContent;
+    btn.textContent = 'COPIED';
+    setTimeout(() => {
+      btn.textContent = original;
+    }, 1200);
   });
 }
 
 function exitToLobby() {
-  if (confirm('Leave the match?')) location.reload();
+  if (confirm('Leave the match?')) {
+    window.location.reload();
+  }
 }
 
-// === Input System ===
-const inputState = {
-  up: false,
-  down: false,
-  left: false,
-  right: false,
-  shoot: false,
-  bomb: false,
-  rocket: false,
+window.fireGun = () => {
+  setVirtualKey('j', true);
+  setTimeout(() => setVirtualKey('j', false), 120);
+};
+window.dropBomb = () => {
+  setVirtualKey('k', true);
+  setTimeout(() => setVirtualKey('k', false), 120);
+};
+window.fireRocket = () => {
+  setVirtualKey('l', true);
+  setTimeout(() => setVirtualKey('l', false), 120);
 };
 
-// Keyboard
-document.addEventListener('keydown', (e) => {
-  if (['ArrowUp', 'w', 'W'].includes(e.key)) inputState.up = true;
-  if (['ArrowDown', 's', 'S'].includes(e.key)) inputState.down = true;
-  if (['ArrowLeft', 'a', 'A'].includes(e.key)) inputState.left = true;
-  if (['ArrowRight', 'd', 'D'].includes(e.key)) inputState.right = true;
-  if (e.key === ' ' || e.key === 'j' || e.key === 'J') inputState.shoot = true;
-  if (e.key.toLowerCase() === 'k') inputState.bomb = true;
-  if (e.key.toLowerCase() === 'l') inputState.rocket = true;
+window.addEventListener('blur', () => {
+  ['j', 'k', 'l'].forEach((key) => setVirtualKey(key, false));
 });
-
-document.addEventListener('keyup', (e) => {
-  if (['ArrowUp', 'w', 'W'].includes(e.key)) inputState.up = false;
-  if (['ArrowDown', 's', 'S'].includes(e.key)) inputState.down = false;
-  if (['ArrowLeft', 'a', 'A'].includes(e.key)) inputState.left = false;
-  if (['ArrowRight', 'd', 'D'].includes(e.key)) inputState.right = false;
-  if (e.key === ' ' || e.key === 'j' || e.key === 'J') inputState.shoot = false;
-  if (e.key.toLowerCase() === 'k') inputState.bomb = false;
-  if (e.key.toLowerCase() === 'l') inputState.rocket = false;
-});
-
-// Mobile touch controls
-function setupMobileControls() {
-  const controls = document.getElementById('mobileControls');
-  if (!controls) return;
-
-  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  if (!isTouchDevice) {
-    controls.style.display = 'none';
-    return;
-  }
-
-  controls.classList.remove('hidden');
-  controls.classList.add('flex');
-
-  // Touch handlers
-  const gunBtn = controls.children[0];
-  const bombBtn = controls.children[1];
-  const rocketBtn = controls.children[2];
-
-  gunBtn.addEventListener('touchstart', (e) => { e.preventDefault(); inputState.shoot = true; });
-  gunBtn.addEventListener('touchend', (e) => { e.preventDefault(); inputState.shoot = false; });
-
-  bombBtn.addEventListener('touchstart', (e) => { e.preventDefault(); inputState.bomb = true; });
-  bombBtn.addEventListener('touchend', (e) => { e.preventDefault(); inputState.bomb = false; });
-
-  rocketBtn.addEventListener('touchstart', (e) => { e.preventDefault(); inputState.rocket = true; });
-  rocketBtn.addEventListener('touchend', (e) => { e.preventDefault(); inputState.rocket = false; });
-}
-
-// Call this after game starts
-window.setupMobileControls = setupMobileControls;
-
-// Mobile button handlers (feed into unified inputState)
-window.fireGun = () => { inputState.shoot = true; setTimeout(() => inputState.shoot = false, 80); };
-window.dropBomb = () => { inputState.bomb = true; setTimeout(() => inputState.bomb = false, 120); };
-window.fireRocket = () => { inputState.rocket = true; setTimeout(() => inputState.rocket = false, 120); };
 
 function drawPreview() {
-  const c = document.getElementById('previewCanvas');
-  if (!c) return;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = '#0f172a'; ctx.fillRect(0,0,320,180);
-  ctx.fillStyle = '#64748b'; ctx.fillRect(0,140,320,40);
-  ctx.save(); ctx.translate(160,90); ctx.rotate(-0.3);
+  const canvas = document.getElementById('previewCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(0, 0, 320, 180);
+  ctx.strokeStyle = '#1f2937';
+  for (let x = 0; x <= 320; x += 32) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, 180);
+    ctx.stroke();
+  }
+  for (let y = 0; y <= 180; y += 32) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(320, y);
+    ctx.stroke();
+  }
+
+  ctx.save();
+  ctx.translate(160, 90);
+  ctx.rotate(-0.35);
   ctx.fillStyle = '#facc15';
-  ctx.fillRect(-22,-9,44,18); ctx.fillRect(-12,-22,24,13);
+  ctx.beginPath();
+  ctx.moveTo(26, 0);
+  ctx.lineTo(-16, -10);
+  ctx.lineTo(-6, 0);
+  ctx.lineTo(-16, 10);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#111827';
+  ctx.fillRect(-3, -4, 8, 8);
   ctx.restore();
 }
 drawPreview();
 
 function toggleHowTo() {
-  alert("AirFire – Private P2P Dogfight\n\n• Up to 4 players\n• Works on phones & desktops\n• Modern 80s aesthetic\n• Machine gun • Bombs • Rockets\n• Rollback netcode");
+  alert(
+    "AirFire – Private P2P Dogfight\n\n" +
+    "• 2 players (host + one client)\n" +
+    "• Host: click HOST PRIVATE GAME\n" +
+    "• Join: paste room code or full invite link\n" +
+    "• Keyboard: WASD/Arrows to fly, J/Space gun, K bomb, L rocket\n" +
+    "• Mobile: joystick + weapon buttons\n" +
+    "• Rollback netcode via NetplayJS"
+  );
 }
 
-console.log('%c[AirFire] Project initialized', 'color:#facc15');
+console.log('%c[AirFire] Netplay integration initialized', 'color:#facc15');
 </script>
 </body>
 </html>
