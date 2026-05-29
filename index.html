@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>AirFire • Private Dogfight</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    
+    :root { --vh: 100vh; }
+    
+    html, body { 
+      margin:0; 
+      padding:0; 
+      background:#0a0a0a; 
+      overflow:hidden; 
+      height: 100dvh; 
+      width: 100%; 
+      font-family: system-ui, -apple-system, sans-serif; 
+    }
+
+    canvas { 
+      image-rendering: pixelated; 
+      border: 4px solid #111827; 
+      box-shadow: 0 0 30px rgba(250, 204, 21, 0.3); 
+    }
+
+    .lobby-header { font-family: 'Press Start 2P', system-ui; letter-spacing: 2px; }
+
+    #gameContainer {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100dvh;
+      display: none;
+      flex-direction: column;
+      background: #0a0a0a;
+      z-index: 50;
+    }
+
+    /* Much cleaner and more robust canvas scaling */
+    #netplayCanvas {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      max-height: calc(100dvh - 60px);
+      object-fit: contain;
+      image-rendering: pixelated;
+      border: 4px solid #111827;
+      box-shadow: 0 0 30px rgba(250, 204, 21, 0.25);
+    }
+  </style>
+  <script src="https://unpkg.com/netplayjs@0.4.1/dist/netplay.js"></script>
+</head>
+<body>
+
+  <!-- LOBBY -->
+  <div id="lobby" class="flex flex-col min-h-[100dvh] max-w-7xl mx-auto w-full p-4 md:p-8">
+    <div class="flex items-center justify-between mb-8">
+      <div class="flex items-center gap-x-3">
+        <div class="w-9 h-9 bg-gradient-to-br from-yellow-400 to-teal-400 rounded-xl flex items-center justify-center text-2xl shadow-inner">✈️</div>
+        <h1 class="lobby-header text-4xl md:text-5xl font-bold tracking-widest text-yellow-300">AIRFIRE</h1>
+      </div>
+      <div class="flex items-center gap-x-4 text-sm text-teal-400">
+        <div onclick="toggleHowTo()" class="cursor-pointer px-6 py-2 rounded-3xl hover:bg-slate-800">How it works</div>
+        <div>Private • P2P • No server</div>
+      </div>
+    </div>
+
+    <div class="flex-1 grid md:grid-cols-2 gap-8 items-center">
+      <!-- Join panel -->
+      <div class="bg-[#111827] rounded-3xl p-8 shadow-2xl flex flex-col">
+        <h2 class="text-3xl font-semibold mb-8 text-white">JOIN THE DOGFIGHT</h2>
+        
+        <div class="mb-8">
+          <label class="block text-xs tracking-widest mb-3 text-slate-400">JOIN WITH CODE</label>
+          <div class="flex gap-3">
+            <input id="joinCode" type="text" maxlength="8" placeholder="K7P9" 
+                   class="flex-1 bg-[#1e2937] border border-slate-600 focus:border-yellow-400 rounded-3xl px-7 py-5 text-xl font-mono text-center outline-none">
+            <button onclick="joinGame()" 
+                    class="bg-yellow-400 hover:bg-yellow-300 text-[#111827] font-bold px-10 rounded-3xl text-xl">JOIN</button>
+          </div>
+        </div>
+
+        <button onclick="hostGame()" 
+                class="bg-gradient-to-r from-yellow-400 to-amber-400 text-[#111827] font-bold text-2xl py-7 rounded-3xl flex items-center justify-center gap-4 shadow-inner hover:scale-[1.02] active:scale-95 transition-all">
+          HOST PRIVATE GAME
+          <span class="text-3xl">✈️</span>
+        </button>
+
+        <p id="shareLinkContainer" class="hidden mt-8 text-center text-sm text-slate-400">
+          Share this link with friends:<br>
+          <span id="shareLink" onclick="copyLink()" class="font-mono bg-slate-800 px-5 py-3 rounded-3xl cursor-pointer inline-block mt-3 break-all"></span>
+        </p>
+
+        <div class="mt-auto pt-8 text-xs text-slate-500 flex justify-between">
+          <div>Up to 4 players • Any device</div>
+          <div>Rollback netcode • Zero lag</div>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div class="hidden md:flex flex-col justify-center items-center bg-[#111827] rounded-3xl p-8">
+        <div class="text-teal-300 text-sm font-medium mb-4 tracking-widest">RETRO 80s + MODERN PHYSICS</div>
+        <div class="w-full max-w-xs aspect-video bg-[#0f172a] rounded-2xl flex items-center justify-center border border-slate-700 overflow-hidden">
+          <canvas id="previewCanvas" width="320" height="180" class="image-rendering-pixelated"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="md:hidden mt-auto text-center text-teal-400 text-sm pt-8">Works perfectly on phones &amp; desktops</div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="gameContainer">
+    <div class="flex justify-between items-center px-4 py-3 bg-[#111827] border-b border-slate-700 text-sm z-50">
+      <div class="flex items-center gap-x-2">
+        <span class="text-yellow-300 font-bold">AIRFIRE</span>
+        <span id="roomInfo" class="font-mono text-teal-400 text-xs"></span>
+      </div>
+      <button onclick="exitToLobby()" class="px-6 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-3xl">← LOBBY</button>
+    </div>
+
+    <canvas id="netplayCanvas"></canvas>
+
+    <!-- Mobile Controls -->
+    <div id="mobileControls" class="hidden fixed bottom-6 left-4 right-4 flex justify-between gap-3 z-[9999]">
+      <button onclick="fireGun()" 
+              class="flex-1 bg-yellow-400 hover:bg-yellow-300 text-[#111827] font-bold py-6 rounded-3xl text-lg flex items-center justify-center gap-2 shadow-2xl">🔫 GUN</button>
+      <button onclick="dropBomb()" 
+              class="flex-1 bg-orange-500 hover:bg-orange-400 text-white font-bold py-6 rounded-3xl text-lg flex items-center justify-center gap-2 shadow-2xl">💣 BOMB</button>
+      <button onclick="fireRocket()" 
+              class="flex-1 bg-purple-500 hover:bg-purple-400 text-white font-bold py-6 rounded-3xl text-lg flex items-center justify-center gap-2 shadow-2xl">🚀 ROCKET</button>
+    </div>
+  </div>
+
+<script>
+// Tailwind
+tailwind.config = { content: [] };
+
+// Core Game Class (placeholder for now)
+class AirFire extends netplayjs.Game {
+  constructor() {
+    super();
+    this.players = new Map();
+    this.bullets = [];
+    this.bombs = [];
+    this.rockets = [];
+    this.gameStarted = false;
+
+    // For local testing / single player mode
+    this.localPlayerId = 'local';
+    this.players.set(this.localPlayerId, {
+      x: 200,
+      y: 250,
+      vx: 0,
+      vy: 0,
+      angle: 0,
+      color: '#facc15',
+      lastShot: 0
+    });
+  }
+
+  // Main game loop - must be deterministic for rollback netcode
+  tick(inputs) {
+    if (!this.gameStarted) return;
+
+    const PLAYER_SPEED = 3.2;
+    const TURN_SPEED = 0.08;
+    const BULLET_SPEED = 7;
+
+    // Update players
+    for (const [playerId, player] of this.players) {
+      const input = inputs.get(playerId) || {};
+
+      // Rotation
+      if (input.left)  player.angle -= TURN_SPEED;
+      if (input.right) player.angle += TURN_SPEED;
+
+      // Thrust
+      if (input.up) {
+        player.vx += Math.cos(player.angle) * 0.25;
+        player.vy += Math.sin(player.angle) * 0.25;
+      }
+
+      // Apply velocity
+      player.x += player.vx;
+      player.y += player.vy;
+
+      // Friction
+      player.vx *= 0.985;
+      player.vy *= 0.985;
+
+      // Screen wrapping (simple for now)
+      const W = AirFire.canvasSize.width;
+      const H = AirFire.canvasSize.height;
+      if (player.x < 0) player.x = W;
+      if (player.x > W) player.x = 0;
+      if (player.y < 0) player.y = H;
+      if (player.y > H) player.y = 0;
+
+      // Shooting
+      if (input.shoot && (player.lastShot || 0) <= 0) {
+        this.bullets.push({
+          x: player.x + Math.cos(player.angle) * 18,
+          y: player.y + Math.sin(player.angle) * 18,
+          vx: Math.cos(player.angle) * BULLET_SPEED + player.vx * 0.3,
+          vy: Math.sin(player.angle) * BULLET_SPEED + player.vy * 0.3,
+          life: 45,
+          owner: playerId
+        });
+        player.lastShot = 8; // fire rate
+      }
+      if (player.lastShot > 0) player.lastShot--;
+    }
+
+    // Update bullets
+    for (let i = this.bullets.length - 1; i >= 0; i--) {
+      const b = this.bullets[i];
+      b.x += b.vx;
+      b.y += b.vy;
+      b.life--;
+
+      if (b.life <= 0) {
+        this.bullets.splice(i, 1);
+      }
+    }
+
+    // Simple collision (bullet vs player)
+    for (let i = this.bullets.length - 1; i >= 0; i--) {
+      const b = this.bullets[i];
+      for (const [pid, p] of this.players) {
+        if (pid === b.owner) continue;
+
+        const dx = b.x - p.x;
+        const dy = b.y - p.y;
+        if (dx * dx + dy * dy < 18 * 18) {
+          // Hit!
+          this.bullets.splice(i, 1);
+          // For now just log - we'll add proper death later
+          console.log(`Player ${b.owner} hit ${pid}`);
+          break;
+        }
+      }
+    }
+  }
+
+  draw(canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Simple grid background
+    ctx.strokeStyle = '#1e2937';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    }
+
+    // Draw players
+    for (const [id, p] of this.players) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+
+      // Simple plane shape
+      ctx.fillStyle = p.color || '#facc15';
+      ctx.beginPath();
+      ctx.moveTo(18, 0);
+      ctx.lineTo(-10, -8);
+      ctx.lineTo(-4, 0);
+      ctx.lineTo(-10, 8);
+      ctx.closePath();
+      ctx.fill();
+
+      // Cockpit
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(-2, -3, 6, 6);
+
+      ctx.restore();
+    }
+
+    // Draw bullets
+    ctx.fillStyle = '#facc15';
+    for (const b of this.bullets) {
+      ctx.fillRect(b.x - 2, b.y - 1, 5, 2);
+    }
+  }
+
+  // This is called by NetplayJS to collect local player input each tick
+  static getInput() {
+    // In a real implementation we would know our own playerId.
+    // For now we return the global inputState (works for 1v1 testing).
+    return { ...inputState };
+  }
+
+  static timestep = 1000 / 60;
+  static canvasSize = { width: 800, height: 500 };
+}
+
+let wrapper = null;
+
+// Clean and robust canvas scaling
+function resizeCanvas() {
+  const canvas = document.getElementById('netplayCanvas');
+  if (!canvas) return;
+
+  const container = document.getElementById('gameContainer');
+  const header = container.querySelector('div:first-child');
+  const headerHeight = header ? header.offsetHeight : 0;
+
+  const availableWidth = window.innerWidth;
+  const availableHeight = window.innerHeight - headerHeight;
+
+  const GAME_WIDTH = 800;
+  const GAME_HEIGHT = 500;
+  const aspect = GAME_WIDTH / GAME_HEIGHT;
+
+  let newWidth, newHeight;
+
+  if (availableWidth / availableHeight > aspect) {
+    newHeight = availableHeight;
+    newWidth = newHeight * aspect;
+  } else {
+    newWidth = availableWidth;
+    newHeight = newWidth / aspect;
+  }
+
+  canvas.style.width = `${Math.floor(newWidth)}px`;
+  canvas.style.height = `${Math.floor(newHeight)}px`;
+  canvas.style.position = 'absolute';
+  canvas.style.left = '50%';
+  canvas.style.top = `${headerHeight + Math.max(0, (availableHeight - newHeight) / 2)}px`;
+  canvas.style.transform = 'translateX(-50%)';
+}
+
+function startGame(isHost) {
+  document.getElementById('lobby').style.display = 'none';
+  const gameCont = document.getElementById('gameContainer');
+  gameCont.style.display = 'flex';
+
+  wrapper = new netplayjs.RollbackWrapper(AirFire);
+  wrapper.start();
+
+  setTimeout(() => {
+    const code = location.hash ? location.hash.replace('#room=', '') : 'READY';
+    document.getElementById('roomInfo').textContent = `ROOM • ${code.substring(0, 8)}`;
+
+    if (isHost) {
+      document.getElementById('shareLinkContainer').classList.remove('hidden');
+      document.getElementById('shareLink').textContent = location.href;
+    }
+
+    // Setup improved mobile controls
+    setupMobileControls();
+
+    resizeCanvas();
+  }, 600);
+
+  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 400));
+}
+
+function hostGame() { startGame(true); }
+
+function joinGame() {
+  const code = document.getElementById('joinCode').value.trim();
+  if (!code) return alert("Enter a room code");
+  location.hash = `room=${code}`;
+  startGame(false);
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(location.href).then(() => {
+    const el = document.getElementById('shareLink');
+    const orig = el.textContent;
+    el.textContent = '✅ COPIED!';
+    setTimeout(() => el.textContent = orig, 1600);
+  });
+}
+
+function exitToLobby() {
+  if (confirm('Leave the match?')) location.reload();
+}
+
+// === Input System ===
+const inputState = {
+  up: false,
+  down: false,
+  left: false,
+  right: false,
+  shoot: false,
+  bomb: false,
+  rocket: false,
+};
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+  if (['ArrowUp', 'w', 'W'].includes(e.key)) inputState.up = true;
+  if (['ArrowDown', 's', 'S'].includes(e.key)) inputState.down = true;
+  if (['ArrowLeft', 'a', 'A'].includes(e.key)) inputState.left = true;
+  if (['ArrowRight', 'd', 'D'].includes(e.key)) inputState.right = true;
+  if (e.key === ' ' || e.key === 'j' || e.key === 'J') inputState.shoot = true;
+  if (e.key.toLowerCase() === 'k') inputState.bomb = true;
+  if (e.key.toLowerCase() === 'l') inputState.rocket = true;
+});
+
+document.addEventListener('keyup', (e) => {
+  if (['ArrowUp', 'w', 'W'].includes(e.key)) inputState.up = false;
+  if (['ArrowDown', 's', 'S'].includes(e.key)) inputState.down = false;
+  if (['ArrowLeft', 'a', 'A'].includes(e.key)) inputState.left = false;
+  if (['ArrowRight', 'd', 'D'].includes(e.key)) inputState.right = false;
+  if (e.key === ' ' || e.key === 'j' || e.key === 'J') inputState.shoot = false;
+  if (e.key.toLowerCase() === 'k') inputState.bomb = false;
+  if (e.key.toLowerCase() === 'l') inputState.rocket = false;
+});
+
+// Mobile touch controls
+function setupMobileControls() {
+  const controls = document.getElementById('mobileControls');
+  if (!controls) return;
+
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  if (!isTouchDevice) {
+    controls.style.display = 'none';
+    return;
+  }
+
+  controls.classList.remove('hidden');
+  controls.classList.add('flex');
+
+  // Touch handlers
+  const gunBtn = controls.children[0];
+  const bombBtn = controls.children[1];
+  const rocketBtn = controls.children[2];
+
+  gunBtn.addEventListener('touchstart', (e) => { e.preventDefault(); inputState.shoot = true; });
+  gunBtn.addEventListener('touchend', (e) => { e.preventDefault(); inputState.shoot = false; });
+
+  bombBtn.addEventListener('touchstart', (e) => { e.preventDefault(); inputState.bomb = true; });
+  bombBtn.addEventListener('touchend', (e) => { e.preventDefault(); inputState.bomb = false; });
+
+  rocketBtn.addEventListener('touchstart', (e) => { e.preventDefault(); inputState.rocket = true; });
+  rocketBtn.addEventListener('touchend', (e) => { e.preventDefault(); inputState.rocket = false; });
+}
+
+// Call this after game starts
+window.setupMobileControls = setupMobileControls;
+
+// Mobile button handlers (feed into unified inputState)
+window.fireGun = () => { inputState.shoot = true; setTimeout(() => inputState.shoot = false, 80); };
+window.dropBomb = () => { inputState.bomb = true; setTimeout(() => inputState.bomb = false, 120); };
+window.fireRocket = () => { inputState.rocket = true; setTimeout(() => inputState.rocket = false, 120); };
+
+function drawPreview() {
+  const c = document.getElementById('previewCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#0f172a'; ctx.fillRect(0,0,320,180);
+  ctx.fillStyle = '#64748b'; ctx.fillRect(0,140,320,40);
+  ctx.save(); ctx.translate(160,90); ctx.rotate(-0.3);
+  ctx.fillStyle = '#facc15';
+  ctx.fillRect(-22,-9,44,18); ctx.fillRect(-12,-22,24,13);
+  ctx.restore();
+}
+drawPreview();
+
+function toggleHowTo() {
+  alert("AirFire – Private P2P Dogfight\n\n• Up to 4 players\n• Works on phones & desktops\n• Modern 80s aesthetic\n• Machine gun • Bombs • Rockets\n• Rollback netcode");
+}
+
+console.log('%c[AirFire] Project initialized', 'color:#facc15');
+</script>
+</body>
+</html>
